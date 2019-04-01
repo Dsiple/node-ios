@@ -58,6 +58,9 @@ void V8_EXPORT_PRIVATE ReleaseHandlerData(int index);
 #elif V8_OS_ANDROID
 // TODO(eholk): fix this before enabling for trap handlers for Android.
 #define THREAD_LOCAL
+#elif V8_OS_IPHONEOS
+// TODO(shawwn): does iOS have thread local stoage?
+#define THREAD_LOCAL
 #else
 #define THREAD_LOCAL __thread
 #endif

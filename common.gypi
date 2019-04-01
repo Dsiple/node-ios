@@ -418,7 +418,64 @@
           }],
         ],
       }],
-      ['OS=="mac"', {
+      ['OS=="mac" and target_arch=="arm64"', {
+        'defines': [
+            '__IPHONEOS__',
+            '_DARWIN_USE_64_BIT_INODE=1',
+            ],
+        'xcode_settings': {
+          'ALWAYS_SEARCH_USER_PATHS': 'NO',
+          'GCC_CW_ASM_SYNTAX': 'NO',                # No -fasm-blocks
+          'GCC_DYNAMIC_NO_PIC': 'NO',               # No -mdynamic-no-pic
+                                                    # (Equivalent to -fPIC)
+          'GCC_ENABLE_CPP_EXCEPTIONS': 'NO',        # -fno-exceptions
+          'GCC_ENABLE_CPP_RTTI': 'NO',              # -fno-rtti
+          'GCC_ENABLE_PASCAL_STRINGS': 'NO',        # No -mpascal-strings
+          'PREBINDING': 'NO',                       # No -Wl,-prebind
+          'USE_HEADERMAP': 'NO',
+          'OTHER_CFLAGS': [
+            '-g', '-O0',
+            '-fno-strict-aliasing',
+            '-isysroot', '<(iphoneos_sdk_path)',
+            '-miphoneos-version-min=<(min_sdk_version)',
+          ],
+          'WARNING_CFLAGS': [
+            '-Wall',
+            '-Wendif-labels',
+            '-W',
+            '-Wno-unused-parameter',
+          ],
+        },
+        'target_conditions': [
+          ['OS=="openbsd"', {
+            'cflags': [ '-I/usr/local/include' ],
+            'ldflags': [ '-Wl,-z,wxneeded' ],
+          }],
+          ['_type!="static_library"', {
+            'xcode_settings': {
+              'OTHER_LDFLAGS': [
+                '-Wl,-no_pie',
+                '-Wl,-search_paths_first',
+                '-isysroot', '<(iphoneos_sdk_path)',
+                '-miphoneos-version-min=<(min_sdk_version)',
+              ],
+            },
+          }],
+        ],
+        'conditions': [
+          ['target_arch=="arm64"', {
+            'xcode_settings': {'ARCHS': ['arm64']},
+          }],
+          ['clang==1', {
+            'xcode_settings': {
+              'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
+              'CLANG_CXX_LANGUAGE_STANDARD': 'c++17',  # -std=c++14
+              'CLANG_CXX_LIBRARY': 'libc++',
+            },
+          }],
+        ],
+      }],
+      ['OS=="mac" and target_arch!="arm64"', {
         'defines': ['_DARWIN_USE_64_BIT_INODE=1'],
         'xcode_settings': {
           'ALWAYS_SEARCH_USER_PATHS': 'NO',

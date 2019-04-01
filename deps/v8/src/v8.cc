@@ -61,6 +61,11 @@ void V8::TearDown() {
 void V8::InitializeOncePerProcessImpl() {
   FlagList::EnforceFlagImplications();
 
+#if defined(__IPHONEOS__)
+  FLAG_jitless = true;
+  FLAG_regexp_interpret_all = true;
+#endif
+
   if (FLAG_predictable && FLAG_random_seed == 0) {
     // Avoid random seeds in predictable mode.
     FLAG_random_seed = 12347;

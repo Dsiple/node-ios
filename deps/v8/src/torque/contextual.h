@@ -78,7 +78,7 @@ class ContextualVariable {
   template <>                                                 \
   V8_EXPORT_PRIVATE VarName::VariableType*&                   \
   ContextualVariable<VarName, VarName::VariableType>::Top() { \
-    static thread_local VarName::VariableType* top = nullptr; \
+    static V8_THREAD_LOCAL VarName::VariableType* top = nullptr; \
     return top;                                               \
   }
 

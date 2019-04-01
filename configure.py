@@ -23,6 +23,8 @@ original_argv = sys.argv[1:]
 # except on OS X.
 CC = os.environ.get('CC', 'cc' if sys.platform == 'darwin' else 'gcc')
 CXX = os.environ.get('CXX', 'c++' if sys.platform == 'darwin' else 'g++')
+XCRUN = os.environ.get('XCRUN', 'xcrun' if sys.platform == 'darwin' else None)
+XCODE_SELECT = os.environ.get('XCODE_SELECT', 'xcode-select' if sys.platform == 'darwin' else None)
 
 sys.path.insert(0, os.path.join('tools', 'gyp', 'pylib'))
 from gyp.common import GetFlavor
@@ -44,6 +46,7 @@ from fetch_deps import FetchDeps
 parser = optparse.OptionParser()
 
 valid_os = ('win', 'mac', 'solaris', 'freebsd', 'openbsd', 'linux',
+            'iphoneos', 'iphonesimulator',
             'android', 'aix', 'cloudabi')
 valid_arch = ('arm', 'arm64', 'ia32', 'ppc',
               'ppc64', 'x32','x64', 'x86', 'x86_64', 's390', 's390x')
@@ -654,23 +657,36 @@ def try_check_compiler(cc, lang):
 # Commands and regular expressions to obtain its version number are taken from
 # https://github.com/openssl/openssl/blob/OpenSSL_1_0_2-stable/crypto/sha/asm/sha512-x86_64.pl#L112-L129
 #
-def get_version_helper(cc, regexp):
+def execute(cc, args=[], error_message='Program not found!'):
   try:
-    proc = subprocess.Popen(shlex.split(cc) + ['-v'], stdin=subprocess.PIPE,
+    proc = subprocess.Popen(shlex.split(cc) + args, stdin=subprocess.PIPE,
                             stderr=subprocess.PIPE, stdout=subprocess.PIPE)
   except OSError:
-    error('''No acceptable C compiler found!
+    error(error_message)
+  return proc.communicate()
+
+def get_version_helper(cc, regexp):
+  stdout, stderr = execute(cc, ['-v'], '''No acceptable C compiler found!
 
        Please make sure you have a C compiler installed on your system and/or
        consider adjusting the CC environment variable if you installed
        it in a non-standard prefix.''')
-
-  match = re.search(regexp, proc.communicate()[1])
-
+  match = re.search(regexp, stderr)
   if match:
     return match.group(2)
   else:
     return '0'
+
+def shell(arg0, argv, *args):
+  if arg0 is not None:
+    if type(argv) is str:
+      argv = shlex.split(argv)
+    stdout, stderr = execute(arg0, list(argv) + list(args))
+    if stdout is not None:
+      stdout = stdout.rstrip()
+    if stderr is not None and stderr != '':
+      error(stderr)
+    return stdout
 
 def get_nasm_version(asm):
   try:
@@ -691,15 +707,59 @@ def get_nasm_version(asm):
   else:
     return '0'
 
-def get_llvm_version(cc):
+def get_environ(key, fail):
+  if key in os.environ:
+    return os.environ[key]
+  else:
+    return fail()
+
+def get_min_sdk_version(xcrun=XCRUN):
+  return get_environ('MIN_SDK_VERSION',
+      lambda: '6.0')
+
+def get_ios_sdk_version(xcrun=XCRUN):
+  return get_environ('IOS_SDK_VERSION',
+      lambda: shell(xcrun, '--sdk iphoneos --show-sdk-version'))
+
+def get_iphoneos_sdk_platform_path(xcrun=XCRUN):
+  return get_environ('IPHONEOS_SDK_PLATFORM_PATH',
+      lambda: shell(xcrun, '--sdk iphoneos --show-sdk-platform-path'))
+
+def get_iphoneos_sdk_path(xcrun=XCRUN):
+  return get_environ('IPHONEOS_SDK_PATH',
+      lambda: shell(xcrun, '--sdk iphoneos --show-sdk-path'))
+
+def get_iphonesimulator_sdk_platform_path(xcrun=XCRUN):
+  return get_environ('IPHONESIMULATOR_SDK_PLATFORM_PATH',
+      lambda: shell(xcrun, '--sdk iphonesimulator --show-sdk-platform-path'))
+
+def get_iphonesimulator_sdk_path(xcrun=XCRUN):
+  return get_environ('IPHONESIMULATOR_SDK_PATH',
+      lambda: shell(xcrun, '--sdk iphonesimulator --show-sdk-path'))
+
+def get_xcode_path(xcode_select=XCODE_SELECT):
+  return get_environ('XCODE_PATH',
+      lambda: shell(xcode_select, '--print-path'))
+
+def get_ios_info(xcrun=XCRUN):
+  return {
+      'min_sdk_version': get_min_sdk_version(xcrun),
+      'ios_sdk_version': get_ios_sdk_version(xcrun),
+      'iphoneos_sdk_platform_path': get_iphoneos_sdk_platform_path(xcrun),
+      'iphoneos_sdk_path': get_iphoneos_sdk_path(xcrun),
+      'iphonesimulator_sdk_platform_path': get_iphonesimulator_sdk_platform_path(xcrun),
+      'iphonesimulator_sdk_path': get_iphonesimulator_sdk_path(xcrun)
+      }
+
+def get_llvm_version(cc=CC):
   return get_version_helper(
     cc, r"(^(?:FreeBSD )?clang version|based on LLVM) ([3-9]\.[0-9]+)")
 
-def get_xcode_version(cc):
+def get_xcode_version(cc=CC):
   return get_version_helper(
     cc, r"(^Apple LLVM version) ([0-9]+\.[0-9]+)")
 
-def get_gas_version(cc):
+def get_gas_version(cc=CC):
   try:
     custom_env = os.environ.copy()
     custom_env["LC_ALL"] = "C"
@@ -824,6 +884,8 @@ def host_arch_cc():
     # we only support gcc at this point and the default on AIX
     # would be xlc so hard code gcc
     k = cc_macros('gcc')
+  if (options.dest_os or '').startswith('iphone'):
+    k = cc_macros('gcc')
   else:
     k = cc_macros(os.environ.get('CC_host'))
 
@@ -900,6 +962,13 @@ def gcc_version_ge(version_checked):
 
 
 def configure_node(o):
+  if (options.dest_os or '').startswith('iphone'):
+    if options.dest_os == 'iphoneos':
+      options.dest_cpu = 'arm64'
+    o['variables']['node_target_type'] = 'static_library'
+    o['variables']['IOS'] = options.dest_os
+    o['variables']['OS'] = 'mac'
+    options.dest_os = 'mac'
   if options.dest_os == 'android':
     o['variables']['OS'] = 'android'
   o['variables']['node_prefix'] = options.prefix
@@ -907,7 +976,10 @@ def configure_node(o):
   o['variables']['node_report'] = b(not options.without_report)
   o['default_configuration'] = 'Debug' if options.debug else 'Release'
 
+
   host_arch = host_arch_win() if os.name == 'nt' else host_arch_cc()
+  if 'IOS' in o['variables']:
+    host_arch = 'x86_64'
   target_arch = options.dest_cpu or host_arch
   # ia32 is preferred by the build tools (GYP) over x86 even if we prefer the latter
   # the Makefile resets this to x86 afterward
@@ -1536,112 +1608,119 @@ def make_bin_override():
 
   return bin_override
 
-output = {
-  'variables': {},
-  'include_dirs': [],
-  'libraries': [],
-  'defines': [],
-  'cflags': [],
-}
+if __name__=='__main__':
 
-# Print a warning when the compiler is too old.
-check_compiler(output)
+  output = {
+    'variables': {},
+    'include_dirs': [],
+    'libraries': [],
+    'defines': [],
+    'cflags': [],
+  }
 
-# determine the "flavor" (operating system) we're building for,
-# leveraging gyp's GetFlavor function
-flavor_params = {}
-if (options.dest_os):
-  flavor_params['flavor'] = options.dest_os
-flavor = GetFlavor(flavor_params)
+  ios_info=get_ios_info()
+  if ios_info is not None:
+    for k, v in ios_info.items():
+      output['variables'][k] = v
 
-configure_node(output)
-configure_library('zlib', output)
-configure_library('http_parser', output)
-configure_library('libuv', output)
-configure_library('libcares', output)
-configure_library('nghttp2', output)
-# stay backwards compatible with shared cares builds
-output['variables']['node_shared_cares'] = \
-    output['variables'].pop('node_shared_libcares')
-configure_v8(output)
-configure_openssl(output)
-configure_intl(output)
-configure_static(output)
-configure_inspector(output)
+  # Print a warning when the compiler is too old.
+  check_compiler(output)
 
-# variables should be a root level element,
-# move everything else to target_defaults
-variables = output['variables']
-del output['variables']
+  # determine the "flavor" (operating system) we're building for,
+  # leveraging gyp's GetFlavor function
+  flavor_params = {}
+  if (options.dest_os):
+    flavor_params['flavor'] = options.dest_os
+  flavor = GetFlavor(flavor_params)
 
-# make_global_settings for special FIPS linking
-# should not be used to compile modules in node-gyp
-config_fips = { 'make_global_settings' : [] }
-if 'make_fips_settings' in output:
-  config_fips['make_global_settings'] = output['make_fips_settings']
-  del output['make_fips_settings']
-  write('config_fips.gypi', do_not_edit +
-        pprint.pformat(config_fips, indent=2) + '\n')
+  configure_node(output)
+  configure_library('zlib', output)
+  configure_library('http_parser', output)
+  configure_library('libuv', output)
+  configure_library('libcares', output)
+  configure_library('nghttp2', output)
+  # stay backwards compatible with shared cares builds
+  output['variables']['node_shared_cares'] = \
+      output['variables'].pop('node_shared_libcares')
+  configure_v8(output)
+  configure_openssl(output)
+  configure_intl(output)
+  configure_static(output)
+  configure_inspector(output)
 
-# make_global_settings should be a root level element too
-if 'make_global_settings' in output:
-  make_global_settings = output['make_global_settings']
-  del output['make_global_settings']
-else:
-  make_global_settings = False
+  # variables should be a root level element,
+  # move everything else to target_defaults
+  variables = output['variables']
+  del output['variables']
 
-output = {
-  'variables': variables,
-  'target_defaults': output,
-}
-if make_global_settings:
-  output['make_global_settings'] = make_global_settings
+  # make_global_settings for special FIPS linking
+  # should not be used to compile modules in node-gyp
+  config_fips = { 'make_global_settings' : [] }
+  if 'make_fips_settings' in output:
+    config_fips['make_global_settings'] = output['make_fips_settings']
+    del output['make_fips_settings']
+    write('config_fips.gypi', do_not_edit +
+          pprint.pformat(config_fips, indent=2) + '\n')
 
-print_verbose(output)
+  # make_global_settings should be a root level element too
+  if 'make_global_settings' in output:
+    make_global_settings = output['make_global_settings']
+    del output['make_global_settings']
+  else:
+    make_global_settings = False
 
-write('config.gypi', do_not_edit +
-      pprint.pformat(output, indent=2) + '\n')
+  output = {
+    'variables': variables,
+    'target_defaults': output,
+  }
+  if make_global_settings:
+    output['make_global_settings'] = make_global_settings
 
-write('config.status', '#!/bin/sh\nset -x\nexec ./configure ' +
-      ' '.join([pipes.quote(arg) for arg in original_argv]) + '\n')
-os.chmod('config.status', 0o775)
+  print_verbose(output)
 
-config = {
-  'BUILDTYPE': 'Debug' if options.debug else 'Release',
-  'PYTHON': sys.executable,
-  'NODE_TARGET_TYPE': variables['node_target_type'],
-}
+  write('config.gypi', do_not_edit +
+        pprint.pformat(output, indent=2) + '\n')
 
-if options.prefix:
-  config['PREFIX'] = options.prefix
+  write('config.status', '#!/bin/sh\nset -x\nexec ./configure ' +
+        ' '.join([pipes.quote(arg) for arg in original_argv]) + '\n')
+  os.chmod('config.status', 0o775)
 
-config = '\n'.join(['='.join(item) for item in config.items()]) + '\n'
+  config = {
+    'BUILDTYPE': 'Debug' if options.debug else 'Release',
+    'PYTHON': sys.executable,
+    'NODE_TARGET_TYPE': variables['node_target_type'],
+  }
 
-# On Windows there's no reason to search for a different python binary.
-bin_override = None if sys.platform == 'win32' else make_bin_override()
-if bin_override:
-  config = 'export PATH:=' + bin_override + ':$(PATH)\n' + config
+  if options.prefix:
+    config['PREFIX'] = options.prefix
 
-write('config.mk', do_not_edit + config)
+  config = '\n'.join(['='.join(item) for item in config.items()]) + '\n'
 
-gyp_args = ['--no-parallel']
+  # On Windows there's no reason to search for a different python binary.
+  bin_override = None if sys.platform == 'win32' else make_bin_override()
+  if bin_override:
+    config = 'export PATH:=' + bin_override + ':$(PATH)\n' + config
 
-if options.use_ninja:
-  gyp_args += ['-f', 'ninja']
-elif flavor == 'win' and sys.platform != 'msys':
-  gyp_args += ['-f', 'msvs', '-G', 'msvs_version=auto']
-else:
-  gyp_args += ['-f', 'make-' + flavor]
+  write('config.mk', do_not_edit + config)
 
-if options.compile_commands_json:
-  gyp_args += ['-f', 'compile_commands_json']
+  gyp_args = ['--no-parallel']
 
-# pass the leftover positional arguments to GYP
-gyp_args += args
+  if options.use_ninja:
+    gyp_args += ['-f', 'ninja']
+  elif flavor == 'win' and sys.platform != 'msys':
+    gyp_args += ['-f', 'msvs', '-G', 'msvs_version=auto']
+  else:
+    gyp_args += ['-f', 'make-' + flavor]
 
-if warn.warned and not options.verbose:
-  warn('warnings were emitted in the configure phase')
+  if options.compile_commands_json:
+    gyp_args += ['-f', 'compile_commands_json']
 
-print_verbose("running: \n    " + " ".join(['python', 'tools/gyp_node.py'] + gyp_args))
-run_gyp(gyp_args)
-info('configure completed successfully')
+  # pass the leftover positional arguments to GYP
+  gyp_args += args
+
+  if warn.warned and not options.verbose:
+    warn('warnings were emitted in the configure phase')
+
+  print_verbose("running: \n    " + " ".join(['python', 'tools/gyp_node.py'] + gyp_args))
+  run_gyp(gyp_args)
+  info('configure completed successfully')

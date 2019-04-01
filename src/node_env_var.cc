@@ -2,7 +2,7 @@
 #include "node_process.h"
 #include "util.h"
 
-#ifdef __APPLE__
+#if defined(__APPLE__) && !defined(__IPHONEOS__)
 #include <crt_externs.h>
 #define environ (*_NSGetEnviron())
 #elif !defined(_MSC_VER)

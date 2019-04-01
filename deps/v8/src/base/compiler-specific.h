@@ -100,7 +100,11 @@
       !defined(V8_TARGET_ARCH_MIPS) && !defined(V8_TARGET_ARCH_MIPS64) && \
       !defined(V8_TARGET_ARCH_PPC) && !defined(V8_TARGET_ARCH_PPC64)) ||  \
      (defined(__clang__) && __cplusplus > 201300L))
+#if defined(__IPHONEOS__)
+#define V8_NOEXCEPT
+#else
 #define V8_NOEXCEPT noexcept
+#endif
 #else
 #define V8_NOEXCEPT
 #endif

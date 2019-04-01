@@ -76,6 +76,11 @@
 # define V8_OS_ANDROID 1
 # define V8_OS_LINUX 1
 # define V8_OS_POSIX 1
+#elif defined(__IPHONEOS__)
+# define V8_OS_IPHONEOS 1
+# define V8_OS_BSD 1
+# define V8_OS_MACOSX 1
+# define V8_OS_POSIX 1
 #elif defined(__APPLE__)
 # define V8_OS_BSD 1
 # define V8_OS_MACOSX 1
@@ -285,6 +290,14 @@
 # define V8_INLINE __forceinline
 #else
 # define V8_INLINE inline
+#endif
+
+#if defined(__IPHONEOS__)
+# define V8_THREAD_LOCAL
+# define V8_CONSTEXPR
+#else
+# define V8_THREAD_LOCAL thread_local
+# define V8_CONSTEXPR constexpr
 #endif
 
 

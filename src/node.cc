@@ -875,7 +875,7 @@ inline int StartNodeWithLoopAndArgs(uv_loop_t* event_loop,
                                     const std::vector<std::string>& args,
                                     const std::vector<std::string>& exec_args) {
   std::unique_ptr<ArrayBufferAllocator, decltype(&FreeArrayBufferAllocator)>
-      allocator(CreateArrayBufferAllocator(), &FreeArrayBufferAllocator);
+       allocator(CreateArrayBufferAllocator(), &FreeArrayBufferAllocator);
   Isolate* const isolate = NewIsolate(allocator.get(), event_loop);
   if (isolate == nullptr)
     return 12;  // Signal internal error.
