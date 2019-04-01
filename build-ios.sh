@@ -1,3 +1,5 @@
+#!/bin/sh
+
 if [ ! -x ./Debug_torque ] || [ ! -x ./Release_torque ] || [ ! -x ./Debug_bytecode_builtins_list_generator ] || [ ! -x ./Release_bytecode_builtins_list_generator ]
 then
   set -x
