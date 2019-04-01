@@ -7,6 +7,9 @@ then
   set +x
 fi
 
+mkdir -p out/Debug
+mkdir -p out/Release
+
 cp Debug_torque out/Debug/torque || exit $?
 cp Debug_bytecode_builtins_list_generator out/Debug/bytecode_builtins_list_generator || exit $?
 
