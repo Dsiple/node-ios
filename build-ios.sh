@@ -50,7 +50,7 @@ DARWIN=darwin15.0.0
 
 XCODEDIR=`xcode-select --print-path`
 IOS_SDK_VERSION=`xcrun --sdk iphoneos --show-sdk-version`
-MIN_SDK_VERSION=6.0
+MIN_SDK_VERSION=7.1
 
 IPHONEOS_PLATFORM=`xcrun --sdk iphoneos --show-sdk-platform-path`
 IPHONEOS_SYSROOT=`xcrun --sdk iphoneos --show-sdk-path`
@@ -60,7 +60,7 @@ IPHONESIMULATOR_SYSROOT=`xcrun --sdk iphonesimulator --show-sdk-path`
 
 # Uncomment if you want to see more information about each invocation
 # of clang as the builds proceed.
-# CLANG_VERBOSE="--verbose"
+CLANG_VERBOSE="--verbose"
 
 CC=gcc
 CXX=g++
@@ -97,9 +97,16 @@ echo "LDFLAGS .................... ${LDFLAGS}"
 
 set -x
 
+DEFINES="-D__arm64__=1 -D__AARCH64EL__ -D_M_ARM64 -D__IPHONEOS__ -DTARGET_OS_IPHONE=1 -DV8_TARGET_OS_IPHONE=1"
+IOS_FLAGS="-miphoneos-version-min=$MIN_SDK_VERSION -isysroot '${IPHONEOS_SYSROOT}'"
+IOS_BUILD_FLAGS="-m64 -arch arm64 -target arm64-apple-ios"
+CLANG_FLAGS="-g -O0 ${CLANG_VERBOSE}"
+CLANG_CPP_FLAGS="-stdlib=libc++ -std=c++17"
+CLANG_FINAL="${IOS_BUILD_FLAGS} ${CLANG_FLAGS} ${IOS_FLAGS} ${DEFINES}"
+
 GYP_DEFINES="target_arch=arm64 v8_target_arch=arm64 host_os=mac" \
-CC_host="clang -x c -m64 -arch arm64 -target arm64-apple-ios -g -O0 -miphoneos-version-min=$MIN_SDK_VERSION -isysroot '${IPHONEOS_SYSROOT}' -D__arm64__=1 -D__AARCH64EL__ -D_M_ARM64" \
-CXX_host="g++ -m64 -arch arm64 -target arm64-apple-ios -stdlib=libc++ -std=c++17 -g -O0 -miphoneos-version-min=$MIN_SDK_VERSION -isysroot '${IPHONEOS_SYSROOT}' -D__arm64__=1 -D__AARCH64EL__ -D_M_ARM64 -D__IPHONEOS__" \
+CC_host="clang -x c ${CLANG_FINAL}" \
+CXX_host="g++ ${CLANG_CPP_FLAGS} ${CLANG_FINAL}" \
 CC="${CC:-$CC_host}" \
 CXX="${CXX:-$CXX_host}" \
   python configure.py \

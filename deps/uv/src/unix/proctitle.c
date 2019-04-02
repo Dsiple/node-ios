@@ -59,7 +59,7 @@ char** uv_setup_args(int argc, char** argv) {
   for (i = 0; i < argc; i++)
     size += strlen(argv[i]) + 1;
 
-#if defined(__MVS__)
+#if defined(__MVS__) || defined(__IPHONEOS__)
   /* argv is not adjacent. So just use argv[0] */
   process_title.str = argv[0];
   process_title.len = strlen(argv[0]);

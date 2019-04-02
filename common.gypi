@@ -421,6 +421,8 @@
       ['OS=="mac" and target_arch=="arm64"', {
         'defines': [
             '__IPHONEOS__',
+            'TARGET_OS_IPHONE=1',
+            'V8_TARGET_OS_IPHONE=1',
             '_DARWIN_USE_64_BIT_INODE=1',
             ],
         'xcode_settings': {

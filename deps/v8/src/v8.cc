@@ -62,8 +62,23 @@ void V8::InitializeOncePerProcessImpl() {
   FlagList::EnforceFlagImplications();
 
 #if defined(__IPHONEOS__)
+  FLAG_force_slow_path = true;
   FLAG_jitless = true;
+  //FLAG_embedded_builtins = true;
+  FLAG_opt = false;
+  FLAG_always_opt = false;
+  FLAG_track_field_types = false;
+  FLAG_track_heap_object_fields = false;
   FLAG_regexp_interpret_all = true;
+  FLAG_regexp_optimization = false;
+  FLAG_validate_asm = false;
+  FLAG_wasm_interpret_all = true;
+  FLAG_asm_wasm_lazy_compilation = false;
+  FLAG_wasm_lazy_compilation = false;
+  FLAG_hard_abort = true;
+  //FLAG_disable_abortjs = true;
+  FLAG_expose_wasm = false;
+  FLAG_abort_on_stack_or_string_length_overflow = true;
 #endif
 
   if (FLAG_predictable && FLAG_random_seed == 0) {

@@ -286,6 +286,9 @@ void Worker::Run() {
           USE(StartExecution(env_.get(), "internal/main/worker_thread"));
         }
 
+        uv_key_set(&Environment::thread_local_loop, &data.loop_);
+        uv_key_set(&Environment::thread_local_isolate, &isolate_);
+
         env_->async_hooks()->pop_async_id(1);
 
         Debug(this, "Loaded environment for worker %llu", thread_id_);
