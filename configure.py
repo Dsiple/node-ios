@@ -715,7 +715,7 @@ def get_environ(key, fail):
 
 def get_min_sdk_version(xcrun=XCRUN):
   return get_environ('MIN_SDK_VERSION',
-      lambda: '6.0')
+      lambda: '8.0')
 
 def get_ios_sdk_version(xcrun=XCRUN):
   return get_environ('IOS_SDK_VERSION',

@@ -27,17 +27,27 @@ inline void FORCE_INLINE Debug(Environment* env,
                                DebugCategory cat,
                                const char* format,
                                Args&&... args) {
+#ifdef __IPHONEOS__
+  NSLogv(format, std::forward<Args>(args)...);
+  fprintf(stderr, format, std::forward<Args>(args)...);
+#else
   if (!UNLIKELY(env->debug_enabled(cat)))
     return;
   fprintf(stderr, format, std::forward<Args>(args)...);
+#endif
 }
 
 inline void FORCE_INLINE Debug(Environment* env,
                                DebugCategory cat,
                                const char* message) {
+#ifdef __IPHONEOS__
+  NSLogv("%s", message);
+  fprintf(stderr, "%s", message);
+#else
   if (!UNLIKELY(env->debug_enabled(cat)))
     return;
   fprintf(stderr, "%s", message);
+#endif
 }
 
 template <typename... Args>
@@ -72,8 +82,10 @@ inline void FORCE_INLINE Debug(AsyncWrap* async_wrap,
   DCHECK_NOT_NULL(async_wrap);
   DebugCategory cat =
       static_cast<DebugCategory>(async_wrap->provider_type());
+#ifndef __IPHONEOS__
   if (!UNLIKELY(async_wrap->env()->debug_enabled(cat)))
     return;
+#endif
   UnconditionalAsyncWrapDebug(async_wrap, format, std::forward<Args>(args)...);
 }
 

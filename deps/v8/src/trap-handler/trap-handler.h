@@ -60,7 +60,7 @@ void V8_EXPORT_PRIVATE ReleaseHandlerData(int index);
 #define THREAD_LOCAL
 #elif V8_OS_IPHONEOS
 // TODO(shawwn): does iOS have thread local stoage?
-#define THREAD_LOCAL
+#define THREAD_LOCAL V8_THREAD_LOCAL
 #else
 #define THREAD_LOCAL __thread
 #endif

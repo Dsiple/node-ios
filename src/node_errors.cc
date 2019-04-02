@@ -179,6 +179,15 @@ void AppendExceptionLine(Environment* env,
           info.message);
   fflush(stderr);
 
+#ifdef __IPHONEOS__
+  NSLogv("%s: %s:%s%s Assertion `%s' failed.\n",
+          name,
+          info.file_line,
+          info.function,
+          *info.function ? ":" : "",
+          info.message);
+#endif
+
   Abort();
 }
 

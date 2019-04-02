@@ -292,12 +292,27 @@
 # define V8_INLINE inline
 #endif
 
+#ifndef V8_CC_GNU
 #if defined(__IPHONEOS__)
-# define V8_THREAD_LOCAL
-# define V8_CONSTEXPR
+# define V8_CC_GNU 1
+#endif
+#endif
+
+#ifndef V8_THREAD_LOCAL
+#if defined(__IPHONEOS__)
+//# define V8_THREAD_LOCAL
+# define V8_THREAD_LOCAL thread_local
 #else
 # define V8_THREAD_LOCAL thread_local
+#endif
+#endif
+
+#ifndef V8_CONSTEXPR
+#if defined(__IPHONEOS__)
+# define V8_CONSTEXPR
+#else
 # define V8_CONSTEXPR constexpr
+#endif
 #endif
 
 
