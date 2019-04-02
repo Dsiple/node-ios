@@ -126,9 +126,9 @@ CXX="${CXX_host}" \
   --verbose \
   "$@" || exit $?
 
-#cd out || exit $?
-#make -j4 torque bytecode_builtins_list_generator || exit $?
-#cd .. || exit $?
+cd out || exit $?
+make -j4 torque bytecode_builtins_list_generator || exit $?
+cd .. || exit $?
 
 mkdir -p out/Debug
 mkdir -p out/Release

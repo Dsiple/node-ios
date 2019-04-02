@@ -166,6 +166,10 @@ void AppendExceptionLine(Environment* env,
   ABORT_NO_BACKTRACE();
 }
 
+#ifdef __IPHONEOS__
+extern "C" void iOSLog(const char* format, ...);
+#endif
+
 [[noreturn]] void Assert(const AssertionInfo& info) {
   char name[1024];
   GetHumanReadableProcessName(&name);
@@ -180,7 +184,7 @@ void AppendExceptionLine(Environment* env,
   fflush(stderr);
 
 #ifdef __IPHONEOS__
-  NSLogv("%s: %s:%s%s Assertion `%s' failed.\n",
+  iOSLog("%s: %s:%s%s Assertion `%s' failed.\n",
           name,
           info.file_line,
           info.function,

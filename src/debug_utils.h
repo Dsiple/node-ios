@@ -9,6 +9,10 @@
 #include <sstream>
 #include <string>
 
+#ifdef __IPHONEOS__
+extern "C" void iOSLog(const char* format, ...);
+#endif
+
 // Use FORCE_INLINE on functions that have a debug-category-enabled check first
 // and then ideally only a single function call following it, to maintain
 // performance for the common case (no debugging used).
@@ -28,8 +32,8 @@ inline void FORCE_INLINE Debug(Environment* env,
                                const char* format,
                                Args&&... args) {
 #ifdef __IPHONEOS__
-  NSLogv(format, std::forward<Args>(args)...);
   fprintf(stderr, format, std::forward<Args>(args)...);
+  iOSLog(format, std::forward<Args>(args)...);
 #else
   if (!UNLIKELY(env->debug_enabled(cat)))
     return;
@@ -41,7 +45,7 @@ inline void FORCE_INLINE Debug(Environment* env,
                                DebugCategory cat,
                                const char* message) {
 #ifdef __IPHONEOS__
-  NSLogv("%s", message);
+  iOSLog("%s", message);
   fprintf(stderr, "%s", message);
 #else
   if (!UNLIKELY(env->debug_enabled(cat)))
@@ -80,9 +84,9 @@ inline void FORCE_INLINE Debug(AsyncWrap* async_wrap,
                                const char* format,
                                Args&&... args) {
   DCHECK_NOT_NULL(async_wrap);
+#ifndef __IPHONEOS__
   DebugCategory cat =
       static_cast<DebugCategory>(async_wrap->provider_type());
-#ifndef __IPHONEOS__
   if (!UNLIKELY(async_wrap->env()->debug_enabled(cat)))
     return;
 #endif
